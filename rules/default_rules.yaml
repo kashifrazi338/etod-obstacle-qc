@@ -1,0 +1,73 @@
+# Default QC rules for electronic Terrain and Obstacle Data (e-TOD) — obstacle datasets.
+#
+# Numerical requirements follow ICAO Annex 15 / PANS-AIM (Doc 10066) obstacle data
+# accuracy requirements per coverage area. ALWAYS verify these values against the
+# edition and the project specification that apply to your contract — copy this file,
+# edit it, and pass it with  --rules my_rules.yaml
+
+mandatory_fields:
+  - obstacle_id
+  - obstacle_type
+  - elevation_m            # top elevation, metres above MSL
+  - height_m               # height above ground, metres
+  - horizontal_accuracy_m
+  - vertical_accuracy_m
+  - area                   # e-TOD coverage area
+  - lighting
+  - marking
+  - capture_date           # YYYY-MM-DD
+
+domains:
+  obstacle_type: [BUILDING, TOWER, MAST, ANTENNA, POLE, POWER_LINE, CABLE, CRANE,
+                  TREE, WIND_TURBINE, CHIMNEY, TANK, STACK, LIGHT_STANDARD, OTHER]
+  lighting: ["YES", "NO"]
+  marking: ["YES", "NO"]
+  area: ["1", "2a", "2b", "2c", "2d", "3", "4"]
+
+# Maximum allowed accuracy value (metres, 90 % confidence) per coverage area
+accuracy_requirements_m:
+  "1":  {horizontal: 50.0, vertical: 30.0}
+  "2a": {horizontal: 5.0,  vertical: 3.0}
+  "2b": {horizontal: 5.0,  vertical: 3.0}
+  "2c": {horizontal: 5.0,  vertical: 3.0}
+  "2d": {horizontal: 5.0,  vertical: 3.0}
+  "3":  {horizontal: 0.5,  vertical: 0.5}
+  "4":  {horizontal: 2.5,  vertical: 1.0}
+
+# Obstacle types that must be captured as lines / may be captured as polygons
+geometry_rules:
+  line_only: [POWER_LINE, CABLE]
+  no_lines: [BUILDING, TOWER, MAST, ANTENNA, POLE, TREE, WIND_TURBINE, CHIMNEY, TANK, STACK]
+
+height_m: {min: 0.1, max: 900.0}
+elevation_m: {min: -450.0, max: 3500.0}
+
+# If a ground_elev_m column exists: |elevation - (ground + height)| must be within this
+elevation_consistency_tolerance_m: 1.0
+
+# Two obstacles closer than distance_m with heights within height_diff_m are flagged
+near_duplicate: {distance_m: 2.0, height_diff_m: 2.0}
+
+# Obstacles at or above this height without marking or lighting are flagged for review
+marking_lighting_height_m: 150.0
+
+capture_date: {max_age_years: 5}
+
+# Optional area of interest [min_lon, min_lat, max_lon, max_lat]; null = no check
+aoi_bbox: null
+
+severity:
+  ATT-001: CRITICAL   # missing mandatory attribute
+  ATT-002: MAJOR      # value outside allowed domain
+  ATT-003: CRITICAL   # duplicate obstacle identifier
+  GEO-001: CRITICAL   # invalid / empty geometry
+  GEO-002: MAJOR      # outside AOI or invalid coordinates
+  GEO-003: MAJOR      # probable duplicate capture (near-coincident)
+  GEO-004: MAJOR      # geometry type not allowed for obstacle type
+  HGT-001: MAJOR      # height out of plausible range
+  HGT-002: MAJOR      # elevation out of plausible range
+  HGT-003: MAJOR      # elevation ≠ ground + height
+  ACC-001: CRITICAL   # horizontal accuracy worse than area requirement
+  ACC-002: CRITICAL   # vertical accuracy worse than area requirement
+  MRK-001: MINOR      # tall obstacle without marking or lighting
+  DAT-001: MINOR      # capture date invalid, in the future or too old
